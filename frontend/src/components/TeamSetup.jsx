@@ -1,17 +1,21 @@
 import { useState } from 'react';
 
-export default function TeamSetup({
-  teamAName, setTeamAName,
-  teamBName, setTeamBName,
-  totalOvers, setTotalOvers,
-  battingTeam, setBattingTeam,
-  bowlingTeam, setBowlingTeam,
-  startMatch
-}) {
-  const [newPlayer, setNewPlayer] = useState({ name: '', role: 'Batsman', isCaptain: false, isKeeper: false });
+export default function TeamSetup(props) {
+  const {
+    teamAName, setTeamAName,
+    teamBName, setTeamBName,
+    totalOvers, setTotalOvers,
+    teamA, setTeamA,
+    teamB, setTeamB,
+    startToss
+  } = props;
+
+  const [newPlayer, setNewPlayer] = useState({
+    name: '', role: 'Batsman', isCaptain: false, isKeeper: false
+  });
 
   const addPlayer = (teamSetter) => {
-    if (!newPlayer.name.trim()) return;
+    if (!newPlayer.name.trim()) return alert('Name required');
     const player = {
       id: Date.now(),
       name: newPlayer.name.trim(),
@@ -19,14 +23,13 @@ export default function TeamSetup({
       isCaptain: newPlayer.isCaptain,
       isKeeper: newPlayer.isKeeper,
       runs: 0,
-      balls: 0,
-      wickets: 0, // for bowlers
-      overs: 0,
+      ballsFaced: 0,
+      out: false,
+      oversBowled: 0,
+      runsConceded: 0,
+      wickets: 0,
     };
-    teamSetter(prev => ({
-      ...prev,
-      players: [...prev.players, player]
-    }));
+    teamSetter(prev => ({ ...prev, players: [...prev.players, player] }));
     setNewPlayer({ name: '', role: 'Batsman', isCaptain: false, isKeeper: false });
   };
 
@@ -34,97 +37,39 @@ export default function TeamSetup({
     <div className="setup">
       <h2>Match Setup</h2>
 
-      <div className="teams">
-        <div>
-          <h3>Batting First: {teamAName}</h3>
-          <input
-            value={teamAName}
-            onChange={e => setTeamAName(e.target.value)}
-            placeholder="Team A name"
-          />
-        </div>
-
-        <div>
-          <h3>Bowling First: {teamBName}</h3>
-          <input
-            value={teamBName}
-            onChange={e => setTeamBName(e.target.value)}
-            placeholder="Team B name"
-          />
-        </div>
+      <div className="team-names">
+        <input value={teamAName} onChange={e => { setTeamAName(e.target.value); setTeamA(p => ({...p, name: e.target.value})); }} placeholder="Team A" />
+        <input value={teamBName} onChange={e => { setTeamBName(e.target.value); setTeamB(p => ({...p, name: e.target.value})); }} placeholder="Team B" />
       </div>
 
-      <div>
-        <label>Total Overs: </label>
-        <input
-          type="number"
-          value={totalOvers}
-          onChange={e => setTotalOvers(Number(e.target.value))}
-          min="1"
-          max="50"
-        />
-      </div>
+      <label>Overs: <input type="number" value={totalOvers} onChange={e => setTotalOvers(+e.target.value)} min="1" max="50" /></label>
 
-      <div className="add-player">
-        <h3>Add Player (to batting team first)</h3>
-        <input
-          value={newPlayer.name}
-          onChange={e => setNewPlayer({...newPlayer, name: e.target.value})}
-          placeholder="Player name"
-        />
-        <select
-          value={newPlayer.role}
-          onChange={e => setNewPlayer({...newPlayer, role: e.target.value})}
-        >
+      <div className="player-input">
+        <input value={newPlayer.name} onChange={e => setNewPlayer({...newPlayer, name: e.target.value})} placeholder="Name" />
+        <select value={newPlayer.role} onChange={e => setNewPlayer({...newPlayer, role: e.target.value})}>
           <option>Batsman</option>
           <option>Bowler</option>
           <option>All-rounder</option>
           <option>Wicketkeeper</option>
         </select>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={newPlayer.isCaptain}
-            onChange={e => setNewPlayer({...newPlayer, isCaptain: e.target.checked})}
-          /> Captain
-        </label>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={newPlayer.isKeeper}
-            onChange={e => setNewPlayer({...newPlayer, isKeeper: e.target.checked})}
-          /> Wicketkeeper
-        </label>
-
-        <button onClick={() => addPlayer(setBattingTeam)}>Add to Batting Team</button>
-        <button onClick={() => addPlayer(setBowlingTeam)}>Add to Bowling Team</button>
+        <label><input type="checkbox" checked={newPlayer.isCaptain} onChange={e => setNewPlayer({...newPlayer, isCaptain: e.target.checked})} /> Captain</label>
+        <label><input type="checkbox" checked={newPlayer.isKeeper} onChange={e => setNewPlayer({...newPlayer, isKeeper: e.target.checked})} /> †</label>
+        <button onClick={() => addPlayer(setTeamA)}>Add → Team A</button>
+        <button onClick={() => addPlayer(setTeamB)}>Add → Team B</button>
       </div>
 
-      <PlayerList title="Batting Team" players={battingTeam.players} />
-      <PlayerList title="Bowling Team" players={bowlingTeam.players} />
+      <div className="team-lists">
+        <div>
+          <h4>{teamA.name} ({teamA.players.length})</h4>
+          <ul>{teamA.players.map(p => <li key={p.id}>{p.name} – {p.role}</li>)}</ul>
+        </div>
+        <div>
+          <h4>{teamB.name} ({teamB.players.length})</h4>
+          <ul>{teamB.players.map(p => <li key={p.id}>{p.name} – {p.role}</li>)}</ul>
+        </div>
+      </div>
 
-      <button className="start-btn" onClick={startMatch}>
-        Start Match →
-      </button>
-    </div>
-  );
-}
-
-function PlayerList({ title, players }) {
-  return (
-    <div className="player-list">
-      <h4>{title} ({players.length} players)</h4>
-      <ul>
-        {players.map(p => (
-          <li key={p.id}>
-            {p.name} • {p.role}
-            {p.isCaptain && ' (C)'}
-            {p.isKeeper && ' (WK)'}
-          </li>
-        ))}
-      </ul>
+      <button className="big-btn" onClick={startToss}>Proceed to Toss</button>
     </div>
   );
 }

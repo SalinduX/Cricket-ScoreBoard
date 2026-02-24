@@ -1,170 +1,225 @@
-import { useState } from 'react';
+// src/App.jsx
+import { useState, useEffect } from 'react';
 import TeamSetup from './components/TeamSetup';
 import Scoreboard from './components/Scoreboard';
 import './index.css';
 
 function App() {
-  const [matchStarted, setMatchStarted] = useState(false);
+  const [phase, setPhase] = useState('setup');
+  const [tossWinner, setTossWinner] = useState(null);
+  const [tossChoice, setTossChoice] = useState(null);
+
   const [teamAName, setTeamAName] = useState('Team A');
   const [teamBName, setTeamBName] = useState('Team B');
   const [totalOvers, setTotalOvers] = useState(20);
 
-  const [battingTeam, setBattingTeam] = useState({
-    name: teamAName,
-    players: [],
-    runs: 0,
-    wickets: 0,
-    extras: { wide: 0, noball: 0, bye: 0, legbye: 0, penalty: 0 },
-    overs: 0,
-    balls: 0,
-    fallOfWickets: [], // array of { wicket: number, score: number, over: number.x, batsmanId: number }
-  });
+  const [teamA, setTeamA] = useState({ name: teamAName, players: [] });
+  const [teamB, setTeamB] = useState({ name: teamBName, players: [] });
 
-  const [bowlingTeam, setBowlingTeam] = useState({
-    name: teamBName,
-    players: [],
-  });
+  const [battingTeam, setBattingTeam] = useState(null);
+  const [bowlingTeam, setBowlingTeam] = useState(null);
 
-  const [currentBatsmen, setCurrentBatsmen] = useState({ striker: null, nonStriker: null });
+  const [currentStriker, setCurrentStriker] = useState(null);
+  const [currentNonStriker, setCurrentNonStriker] = useState(null);
   const [currentBowler, setCurrentBowler] = useState(null);
+  const [lastBowler, setLastBowler] = useState(null); // for consecutive over rule
 
-  const startMatch = () => {
-    if (battingTeam.players.length < 11 || bowlingTeam.players.length < 1) {
-      alert('Need at least 11 players in batting team and 1 bowler to start');
-      return;
-    }
+  const [currentInnings, setCurrentInnings] = useState(0);
+  const [matchEnded, setMatchEnded] = useState(false);
 
-    const batsmen = battingTeam.players.filter(
-      (p) => p.role.includes('Batsman') || p.role.includes('All-rounder') || p.role.includes('Wicketkeeper')
-    );
-
-    if (batsmen.length < 2) {
-      alert('Need at least 2 batting-capable players (Batsman / All-rounder / WK)');
-      return;
-    }
-
-    setCurrentBatsmen({
-      striker: batsmen[0].id,
-      nonStriker: batsmen[1].id,
-    });
-
-    const bowlers = bowlingTeam.players.filter(
-      (p) => p.role.includes('Bowler') || p.role.includes('All-rounder')
-    );
-
-    if (bowlers.length === 0) {
-      alert('Need at least one bowler or all-rounder');
-      return;
-    }
-
-    setCurrentBowler(bowlers[0].id);
-    setMatchStarted(true);
+  // Save / Load
+  const saveMatch = () => {
+    const state = {
+      phase, tossWinner, tossChoice,
+      teamAName, teamBName, totalOvers,
+      teamA, teamB,
+      battingTeam, bowlingTeam,
+      currentStriker, currentNonStriker, currentBowler, lastBowler,
+      currentInnings, matchEnded
+    };
+    localStorage.setItem('cricketMatchState', JSON.stringify(state));
+    alert('Match state saved!');
   };
 
-  const addRun = (
-    runs,
-    isExtra = false,
-    extraType = null,
-    wicket = false,
-    wicketType = ''
-  ) => {
-    if (!matchStarted) return;
+  const loadMatch = () => {
+    const saved = localStorage.getItem('cricketMatchState');
+    if (saved) {
+      const state = JSON.parse(saved);
+      setPhase(state.phase);
+      setTossWinner(state.tossWinner);
+      setTossChoice(state.tossChoice);
+      setTeamAName(state.teamAName);
+      setTeamBName(state.teamBName);
+      setTotalOvers(state.totalOvers);
+      setTeamA(state.teamA);
+      setTeamB(state.teamB);
+      setBattingTeam(state.battingTeam);
+      setBowlingTeam(state.bowlingTeam);
+      setCurrentStriker(state.currentStriker);
+      setCurrentNonStriker(state.currentNonStriker);
+      setCurrentBowler(state.currentBowler);
+      setLastBowler(state.lastBowler);
+      setCurrentInnings(state.currentInnings);
+      setMatchEnded(state.matchEnded);
+      alert('Match state loaded!');
+    } else {
+      alert('No saved match found');
+    }
+  };
 
-    setBattingTeam((prev) => {
+  // Toss logic (unchanged)
+  const startToss = () => {
+    if (teamA.players.length < 4 || teamB.players.length < 4) {
+      alert('Each team needs at least 4 players');
+      return;
+    }
+    setPhase('toss');
+  };
+
+  const simulateToss = (call) => {
+    const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
+    setTossWinner(call === result ? teamAName : teamBName);
+  };
+
+  const handleTossChoice = (choice) => {
+    setTossChoice(choice);
+
+    let batTeam, bowlTeam;
+
+    if (tossWinner === teamAName) {
+      batTeam = choice === 'bat' ? teamA : teamB;
+      bowlTeam = choice === 'bat' ? teamB : teamA;
+    } else {
+      batTeam = choice === 'bat' ? teamB : teamA;
+      bowlTeam = choice === 'bat' ? teamA : teamB;
+    }
+
+    const possibleOpeners = batTeam.players.filter(p => !p.out);
+
+    if (possibleOpeners.length < 2) {
+      alert(`Not enough opening batsmen in ${batTeam.name}`);
+      return;
+    }
+
+    setBattingTeam({
+      ...batTeam,
+      runs: 0,
+      wickets: 0,
+      extras: { wide: 0, noball: 0, bye: 0, legbye: 0 },
+      overs: 0,
+      balls: 0,
+      fallOfWickets: [],
+      innings: 1,
+    });
+
+    setBowlingTeam(bowlTeam);
+
+    setCurrentStriker(possibleOpeners[0].id);
+    setCurrentNonStriker(possibleOpeners[1].id);
+
+    const possibleBowlers = bowlTeam.players.filter(p => {
+      const r = (p.role || '').toLowerCase();
+      return r.includes('bowler') || r.includes('all-rounder');
+    });
+
+    if (possibleBowlers.length === 0) {
+      alert('No bowlers available');
+      return;
+    }
+
+    setCurrentBowler(possibleBowlers[0].id);
+    setLastBowler(null);
+    setCurrentInnings(1);
+    setPhase('match');
+  };
+
+  // ────────────────────────────────────────────────
+  // Ball logic – with out player protection
+  // ────────────────────────────────────────────────
+
+  const addBall = (runs, isExtra = false, extraType = null, wicket = false, wicketType = '') => {
+    if (matchEnded) return;
+
+    setBattingTeam(prev => {
       let newBalls = prev.balls + 1;
       let newOvers = prev.overs;
       let newRuns = prev.runs + runs;
       let newExtras = { ...prev.extras };
-      let legalDelivery = true;
+      let legal = true;
 
       if (isExtra) {
         newRuns += runs;
         newExtras[extraType] = (newExtras[extraType] || 0) + runs;
-
-        // Wide & No-ball are not legal deliveries
-        if (extraType === 'wide' || extraType === 'noball') {
-          legalDelivery = false;
-          newBalls -= 1;
-        }
+        if (extraType === 'wide' || extraType === 'noball') legal = false, newBalls -= 1;
       }
 
-      // Count only legal deliveries toward overs
-      if (legalDelivery && newBalls >= 6) {
+      if (legal && newBalls >= 6) {
         newOvers += 1;
         newBalls -= 6;
       }
 
-      // Wicket
       let newWickets = prev.wickets;
-      let outBatsmanId = null;
+      let outId = null;
       if (wicket) {
         newWickets += 1;
-        outBatsmanId = currentBatsmen.striker; // default: striker out
-        // You can later improve for run-out (non-striker) etc.
+        outId = currentStriker;
       }
 
-      // Update players
-      const updatedPlayers = prev.players.map((player) => {
-        if (player.id === currentBatsmen.striker) {
+      const updatedPlayers = prev.players.map(p => {
+        if (p.id === currentStriker) {
           return {
-            ...player,
-            runs: (player.runs || 0) + (isExtra ? 0 : runs), // extras not credited to batsman
-            balls: (player.balls || 0) + (legalDelivery ? 1 : 0),
+            ...p,
+            runs: (p.runs || 0) + (isExtra ? 0 : runs),
+            ballsFaced: (p.ballsFaced || 0) + (legal ? 1 : 0),
+            out: p.out || (wicket ? (wicketType || 'out') : p.out),
           };
         }
-        if (player.id === currentBowler) {
+        if (p.id === currentBowler) {
           return {
-            ...player,
-            runsConceded: (player.runsConceded || 0) + runs,
-            ballsBowled: (player.ballsBowled || 0) + (legalDelivery ? 1 : 0),
-            wickets: (player.wickets || 0) + (wicket ? 1 : 0),
+            ...p,
+            oversBowled: (p.oversBowled || 0) + (legal ? 1/6 : 0),
+            runsConceded: (p.runsConceded || 0) + runs,
+            wickets: (p.wickets || 0) + (wicket ? 1 : 0),
           };
         }
-        return player;
+        return p;
       });
 
-      // Strike rotation
-      let newStriker = currentBatsmen.striker;
-      let newNonStriker = currentBatsmen.nonStriker;
-
-      // Rotate on odd runs (including byes/leg byes)
-      const effectiveRunsForRotation = isExtra && (extraType === 'bye' || extraType === 'legbye')
-        ? runs
-        : runs;
-
-      if (effectiveRunsForRotation % 2 === 1) {
+      let newStriker = currentStriker;
+      let newNonStriker = currentNonStriker;
+      const effRuns = isExtra && (extraType === 'bye' || extraType === 'legbye') ? runs : runs;
+      if (effRuns % 2 === 1) {
         [newStriker, newNonStriker] = [newNonStriker, newStriker];
       }
 
-      // After wicket → new batsman to striker's end
-      if (wicket) {
-        const outPlayers = prev.fallOfWickets.map((w) => w.batsmanId);
-        const nextBatsman = prev.players.find(
-          (p) =>
-            !outPlayers.includes(p.id) &&
-            p.id !== currentBatsmen.striker &&
-            p.id !== currentBatsmen.nonStriker
-        );
-
-        if (nextBatsman) {
-          newStriker = nextBatsman.id;
-          // non-striker stays (unless run out, but we simplify)
-        }
+      // End of over: swap + remember last bowler
+      if (legal && newBalls === 0 && newOvers > prev.overs) {
+        [newStriker, newNonStriker] = [newNonStriker, newStriker];
+        setLastBowler(currentBowler);
       }
 
-      // Record fall of wicket
-      let newFallOfWickets = [...prev.fallOfWickets];
       if (wicket) {
-        newFallOfWickets.push({
-          wicket: newWickets,
+        const remaining = updatedPlayers.filter(p => !p.out);
+        const eligible = remaining.filter(p => p.id !== outId && p.id !== currentNonStriker);
+        if (eligible.length === 0) {
+          setMatchEnded(true);
+          return prev;
+        }
+        newStriker = eligible[0].id;
+      }
+
+      let newFow = [...prev.fallOfWickets];
+      if (wicket) {
+        newFow.push({
+          wicketNum: newWickets,
           score: newRuns,
-          over: `${newOvers}.${newBalls}`,
-          batsmanId: outBatsmanId,
-          type: wicketType,
+          overBall: `${newOvers}.${newBalls}`,
+          batsmanId: outId,
+          type: wicketType || 'out',
         });
       }
 
-      return {
+      const updated = {
         ...prev,
         players: updatedPlayers,
         runs: newRuns,
@@ -172,59 +227,138 @@ function App() {
         extras: newExtras,
         overs: newOvers,
         balls: newBalls,
-        fallOfWickets: newFallOfWickets,
+        fallOfWickets: newFow,
       };
+
+      // Innings / match end
+      const allOut = newWickets >= 10 || updated.players.filter(p => !p.out).length < 2;
+      const oversDone = newOvers >= totalOvers && newBalls === 0;
+
+      if (allOut || oversDone) {
+        if (currentInnings === 1) {
+          const newBatting = bowlingTeam;
+          const newBowling = battingTeam;
+
+          const newOpeners = newBatting.players.filter(p => !p.out);
+          if (newOpeners.length >= 2) {
+            setCurrentStriker(newOpeners[0].id);
+            setCurrentNonStriker(newOpeners[1].id);
+          }
+
+          const newBowlers = newBowling.players.filter(p => {
+            const r = (p.role || '').toLowerCase();
+            return (r.includes('bowler') || r.includes('all-rounder')) && p.id !== currentBowler;
+          });
+
+          setCurrentBowler(newBowlers.length > 0 ? newBowlers[0].id : null);
+          setLastBowler(null);
+
+          setBattingTeam({
+            ...newBatting,
+            runs: 0,
+            wickets: 0,
+            extras: { wide: 0, noball: 0, bye: 0, legbye: 0 },
+            overs: 0,
+            balls: 0,
+            fallOfWickets: [],
+            innings: 2,
+          });
+
+          setBowlingTeam(newBowling);
+          setCurrentInnings(2);
+        } else {
+          setMatchEnded(true);
+        }
+      }
+
+      return updated;
     });
+  };
 
-    // Change bowler at end of over
-    if (battingTeam.balls + 1 >= 6 && !isExtra) { // simplified – only on legal delivery
-      setCurrentBatsmen((prevState) => {
-        // Cross batsmen at end of over
-        return {
-          striker: prevState.nonStriker,
-          nonStriker: prevState.striker,
-        };
-      });
-
-      setBowlingTeam((prevTeam) => {
-        const bowlers = prevTeam.players.filter(
-          (p) => p.role.includes('Bowler') || p.role.includes('All-rounder')
-        );
-        const currentIdx = bowlers.findIndex((b) => b.id === currentBowler);
-        const nextIdx = (currentIdx + 1) % bowlers.length;
-        setCurrentBowler(bowlers[nextIdx]?.id || currentBowler);
-        return prevTeam;
-      });
+  const changeBowler = (bowlerId) => {
+    if (bowlerId === lastBowler) {
+      alert("Cannot bowl consecutive overs (real cricket rule)");
+      return;
     }
+    setCurrentBowler(bowlerId);
+    setLastBowler(currentBowler);
+  };
+
+  const changeStriker = (id) => {
+    if (id === currentNonStriker) return alert("Cannot select same player");
+    setCurrentStriker(id);
+  };
+
+  const changeNonStriker = (id) => {
+    if (id === currentStriker) return alert("Cannot select same player");
+    setCurrentNonStriker(id);
+  };
+
+  const getRunRate = () => {
+    if (!battingTeam) return '0.00';
+    const balls = battingTeam.overs * 6 + battingTeam.balls;
+    return balls > 0 ? (battingTeam.runs / (balls / 6)).toFixed(2) : '0.00';
+  };
+
+  const getRequiredRR = () => {
+    if (currentInnings !== 2 || !battingTeam?.innings === 1) return null;
+    const target = battingTeam.runs + 1;
+    const remaining = target - battingTeam.runs;
+    const ballsLeft = totalOvers * 6 - (battingTeam.overs * 6 + battingTeam.balls);
+    if (ballsLeft <= 0) return remaining > 0 ? '∞' : '0.00';
+    return (remaining / (ballsLeft / 6)).toFixed(2);
+  };
+
+  const getResult = () => {
+    if (!matchEnded) return null;
+    const score1 = battingTeam.innings === 1 ? battingTeam.runs : bowlingTeam?.runs || 0;
+    const score2 = battingTeam.innings === 2 ? battingTeam.runs : 0;
+
+    if (score2 > score1) return `${battingTeam.name} won by ${10 - battingTeam.wickets} wickets`;
+    if (score1 > score2) return `${bowlingTeam.name} won by ${score1 - score2} runs`;
+    return 'Match Tied';
   };
 
   return (
     <div className="app">
-      <h1>Cricket Scorer (Frontend Only)</h1>
+      <h1>Cricket Scorer</h1>
 
-      {!matchStarted ? (
-        <TeamSetup
-          teamAName={teamAName}
-          setTeamAName={setTeamAName}
-          teamBName={teamBName}
-          setTeamBName={setTeamBName}
-          totalOvers={totalOvers}
-          setTotalOvers={setTotalOvers}
-          battingTeam={battingTeam}
-          setBattingTeam={setBattingTeam}
-          bowlingTeam={bowlingTeam}
-          setBowlingTeam={setBowlingTeam}
-          startMatch={startMatch}
-        />
-      ) : (
-        <Scoreboard
-          battingTeam={battingTeam}
-          bowlingTeam={bowlingTeam}
-          currentBatsmen={currentBatsmen}
-          currentBowler={currentBowler}
-          addRun={addRun}
-          totalOvers={totalOvers}
-        />
+      {phase === 'setup' && (
+        <TeamSetup {...{
+          teamAName, setTeamAName, teamBName, setTeamBName,
+          totalOvers, setTotalOvers, teamA, setTeamA, teamB, setTeamB,
+          startToss
+        }} />
+      )}
+
+      {phase === 'toss' && (
+        <div className="toss">
+          <h2>Toss</h2>
+          {!tossWinner ? (
+            <>
+              <p>Team A calls:</p>
+              <button onClick={() => simulateToss('Heads')}>Heads</button>
+              <button onClick={() => simulateToss('Tails')}>Tails</button>
+            </>
+          ) : (
+            <>
+              <p style={{color:'#ffd700'}}>{tossWinner} won the toss!</p>
+              <button onClick={() => handleTossChoice('bat')}>Bat first</button>
+              <button onClick={() => handleTossChoice('bowl')}>Bowl first</button>
+            </>
+          )}
+        </div>
+      )}
+
+      {phase === 'match' && (
+        <Scoreboard {...{
+          battingTeam, bowlingTeam,
+          currentStriker, currentNonStriker, currentBowler,
+          addBall, changeBowler, changeStriker, changeNonStriker,
+          totalOvers, runRate: getRunRate(), requiredRR: getRequiredRR(),
+          matchEnded, result: getResult(),
+          saveMatch, loadMatch
+        }} />
       )}
     </div>
   );

@@ -241,4 +241,49 @@ button:hover { background: #778da9; }
   margin-top: 30px;
 }
 
-/* Make sure BallUpdate styles from previous message are also present */
+/* Make sure BallUpdate styles from previous message are also present */.run-rate {
+  font-size: 1.4rem;
+  margin-top: 8px;
+  color: #ffd60a;
+}
+
+.stats-tables table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.stats-tables th, .stats-tables td {
+  padding: 10px;
+  border: 1px solid #415a77;
+  text-align: center;
+}
+
+.stats-tables th {
+  background: #2a3b5a;
+  color: #ffd60a;
+}
+
+.match-end {
+  background: #283618;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  margin-top: 30px;
+}
+
+.app { max-width: 900px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+.setup, .toss-section, .scoreboard { background: #1a1a2e; color: white; padding: 20px; border-radius: 12px; margin: 20px 0; }
+h1, h2 { color: #ffd700; }
+button { padding: 10px 20px; margin: 6px; background: #0f3460; color: white; border: none; border-radius: 6px; cursor: pointer; }
+button:hover { background: #16213e; }
+.danger { background: #c1121f !important; }
+.big-btn { font-size: 1.3rem; background: #e94560; padding: 14px 40px; margin-top: 20px; }
+.score-main { font-size: 3rem; text-align: center; }
+.overs { font-size: 1.6rem; color: #ccc; }
+.controls { margin: 30px 0; text-align: center; }
+.runs button { width: 60px; height: 60px; font-size: 1.6rem; background: #4a6c6f; }
+.extras button, .wicket button { padding: 10px 18px; }
+.fow ul { list-style: none; padding: 0; }
+.fow li { padding: 6px 0; border-bottom: 1px solid #444; }
+.result { text-align: center; font-size: 1.6rem; color: #00ff88; background: #0d1b2a; padding: 30px; border-radius: 12px; }

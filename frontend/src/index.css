@@ -1,0 +1,91 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #0d1b2a;
+  color: #e0e0e0;
+  margin: 0;
+  padding: 20px;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1, h2, h3 { color: #ffd60a; }
+
+.setup, .scoreboard {
+  background: #1b263b;
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+}
+
+.teams { display: flex; gap: 40px; margin: 20px 0; }
+
+.add-player {
+  margin: 20px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+button {
+  padding: 10px 16px;
+  margin: 4px;
+  background: #415a77;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover { background: #778da9; }
+
+.start-btn {
+  background: #ffba08;
+  color: black;
+  font-size: 1.2rem;
+  padding: 14px 30px;
+  margin-top: 20px;
+}
+
+.main-score {
+  text-align: center;
+  font-size: 2.5rem;
+  margin: 20px 0;
+}
+
+.score-big {
+  font-size: 5rem;
+  font-weight: bold;
+  color: #ffd60a;
+}
+
+.overs { font-size: 1.8rem; }
+
+.extras { color: #9d9d9d; }
+
+.current { 
+  display: flex; 
+  justify-content: space-around; 
+  background: #415a77; 
+  padding: 15px; 
+  border-radius: 8px; 
+  margin: 20px 0;
+}
+
+.controls { margin-top: 30px; }
+
+.run-buttons button { 
+  font-size: 1.4rem; 
+  width: 60px; 
+  background: #606c38; 
+}
+
+.extras-buttons button { background: #283618; }
+
+.wicket-buttons button.danger { background: #9d0208; }
+
+.player-list ul { list-style: none; padding: 0; }
+.player-list li { padding: 6px 0; }

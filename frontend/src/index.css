@@ -89,3 +89,156 @@ button:hover { background: #778da9; }
 
 .player-list ul { list-style: none; padding: 0; }
 .player-list li { padding: 6px 0; }
+
+.player-list {
+  margin: 20px 0;
+  background: #2a3b5a;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.player-list h4 {
+  margin: 0 0 10px 0;
+  color: #ffd60a;
+}
+
+.player-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.player-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #415a77;
+}
+
+.player-list li:last-child {
+  border-bottom: none;
+}
+
+.captain {
+  color: #ffd60a;
+  font-weight: bold;
+}
+
+.keeper {
+  color: #00d4ff;
+  font-weight: bold;
+}
+.ball-update {
+  margin-top: 30px;
+  background: #1b263b;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.ball-update h3 {
+  margin: 0 0 15px 0;
+  color: #ffd60a;
+  text-align: center;
+}
+
+.run-group, .extras-group, .wicket-group {
+  margin-bottom: 25px;
+}
+
+.run-group h4, .extras-group h4, .wicket-group h4 {
+  margin-bottom: 10px;
+  color: #e0e0e0;
+}
+
+.run-buttons, .extra-buttons, .wicket-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.run-btn {
+  width: 60px;
+  height: 60px;
+  font-size: 1.6rem;
+  background: #606c38;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.run-btn.highlight {
+  background: #d4a017;
+  font-weight: bold;
+}
+
+.extra-buttons button {
+  background: #283618;
+  padding: 10px 16px;
+}
+
+.wicket-btn {
+  background: #9d0208 !important;
+  padding: 12px 20px;
+  font-weight: bold;
+}
+
+.wicket-btn:hover {
+  background: #c1121f !important;
+}
+/* ==================== Scoreboard Enhancements ==================== */
+
+.scoreboard {
+  background: #1b263b;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.main-score {
+  text-align: center;
+  margin: 20px 0 30px;
+}
+
+.score-big {
+  font-size: 5.5rem;
+  font-weight: bold;
+  color: #ffd60a;
+  line-height: 1;
+}
+
+.overs {
+  font-size: 2.1rem;
+  color: #e0e0e0;
+  margin: 8px 0;
+}
+
+.extras {
+  font-size: 1.1rem;
+  color: #9d9d9d;
+}
+
+.current-players {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  background: #2a3b5a;
+  padding: 18px;
+  border-radius: 10px;
+  margin: 25px 0;
+}
+
+.batsman-info, .bowler-info {
+  font-size: 1.15rem;
+}
+
+.stats {
+  color: #00d4ff;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.controls-section {
+  margin-top: 30px;
+}
+
+/* Make sure BallUpdate styles from previous message are also present */

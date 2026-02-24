@@ -14,9 +14,10 @@ function App() {
     players: [],
     runs: 0,
     wickets: 0,
-    extras: { wide: 0, noball: 0, bye: 0, legbye: 0 },
+    extras: { wide: 0, noball: 0, bye: 0, legbye: 0, penalty: 0 },
     overs: 0,
     balls: 0,
+    fallOfWickets: [], // array of { wicket: number, score: number, over: number.x, batsmanId: number }
   });
 
   const [bowlingTeam, setBowlingTeam] = useState({
@@ -28,15 +29,17 @@ function App() {
   const [currentBowler, setCurrentBowler] = useState(null);
 
   const startMatch = () => {
-    if (battingTeam.players.length < 2 || bowlingTeam.players.length < 1) {
-      alert('Need at least 2 batsmen and 1 bowler to start');
+    if (battingTeam.players.length < 11 || bowlingTeam.players.length < 1) {
+      alert('Need at least 11 players in batting team and 1 bowler to start');
       return;
     }
 
-    // Pick first two batsmen and first bowler
-    const batsmen = battingTeam.players.filter(p => p.role.includes('Batsman') || p.role.includes('All-rounder'));
+    const batsmen = battingTeam.players.filter(
+      (p) => p.role.includes('Batsman') || p.role.includes('All-rounder') || p.role.includes('Wicketkeeper')
+    );
+
     if (batsmen.length < 2) {
-      alert('Need at least 2 batting players (Batsman/All-rounder)');
+      alert('Need at least 2 batting-capable players (Batsman / All-rounder / WK)');
       return;
     }
 
@@ -45,82 +48,153 @@ function App() {
       nonStriker: batsmen[1].id,
     });
 
-    setCurrentBowler(bowlingTeam.players[0].id);
+    const bowlers = bowlingTeam.players.filter(
+      (p) => p.role.includes('Bowler') || p.role.includes('All-rounder')
+    );
 
+    if (bowlers.length === 0) {
+      alert('Need at least one bowler or all-rounder');
+      return;
+    }
+
+    setCurrentBowler(bowlers[0].id);
     setMatchStarted(true);
   };
 
-  const addRun = (runs, isExtra = false, extraType = null, wicket = false, wicketType = '') => {
+  const addRun = (
+    runs,
+    isExtra = false,
+    extraType = null,
+    wicket = false,
+    wicketType = ''
+  ) => {
     if (!matchStarted) return;
 
-    let newBalls = battingTeam.balls + 1;
-    let newOvers = battingTeam.overs;
-    let newRuns = battingTeam.runs + runs;
-    let newExtras = { ...battingTeam.extras };
+    setBattingTeam((prev) => {
+      let newBalls = prev.balls + 1;
+      let newOvers = prev.overs;
+      let newRuns = prev.runs + runs;
+      let newExtras = { ...prev.extras };
+      let legalDelivery = true;
 
-    if (isExtra) {
-      newRuns += runs;
-      newExtras[extraType] += runs;
-      // Extras usually don't count as legal ball except for some cases
-      if (extraType !== 'bye' && extraType !== 'legbye') {
-        newBalls -= 1; // Wide / Noball not counted as legal delivery
+      if (isExtra) {
+        newRuns += runs;
+        newExtras[extraType] = (newExtras[extraType] || 0) + runs;
+
+        // Wide & No-ball are not legal deliveries
+        if (extraType === 'wide' || extraType === 'noball') {
+          legalDelivery = false;
+          newBalls -= 1;
+        }
       }
-    }
 
-    // Update overs
-    if (newBalls >= 6) {
-      newOvers += 1;
-      newBalls -= 6;
-    }
+      // Count only legal deliveries toward overs
+      if (legalDelivery && newBalls >= 6) {
+        newOvers += 1;
+        newBalls -= 6;
+      }
 
-    // Wicket?
-    let newWickets = battingTeam.wickets;
-    let outPlayerId = null;
-    if (wicket) {
-      newWickets += 1;
-      outPlayerId = currentBatsmen.striker;
-      // For simplicity: striker is out (can improve later for run-out etc.)
-    }
+      // Wicket
+      let newWickets = prev.wickets;
+      let outBatsmanId = null;
+      if (wicket) {
+        newWickets += 1;
+        outBatsmanId = currentBatsmen.striker; // default: striker out
+        // You can later improve for run-out (non-striker) etc.
+      }
 
-    // Rotate strike on odd runs or wicket (if not run-out of non-striker)
-    let newStriker = currentBatsmen.striker;
-    let newNonStriker = currentBatsmen.nonStriker;
+      // Update players
+      const updatedPlayers = prev.players.map((player) => {
+        if (player.id === currentBatsmen.striker) {
+          return {
+            ...player,
+            runs: (player.runs || 0) + (isExtra ? 0 : runs), // extras not credited to batsman
+            balls: (player.balls || 0) + (legalDelivery ? 1 : 0),
+          };
+        }
+        if (player.id === currentBowler) {
+          return {
+            ...player,
+            runsConceded: (player.runsConceded || 0) + runs,
+            ballsBowled: (player.ballsBowled || 0) + (legalDelivery ? 1 : 0),
+            wickets: (player.wickets || 0) + (wicket ? 1 : 0),
+          };
+        }
+        return player;
+      });
 
-    if (!wicket || wicketType !== 'Run out') {
-      if (runs % 2 === 1) {
+      // Strike rotation
+      let newStriker = currentBatsmen.striker;
+      let newNonStriker = currentBatsmen.nonStriker;
+
+      // Rotate on odd runs (including byes/leg byes)
+      const effectiveRunsForRotation = isExtra && (extraType === 'bye' || extraType === 'legbye')
+        ? runs
+        : runs;
+
+      if (effectiveRunsForRotation % 2 === 1) {
         [newStriker, newNonStriker] = [newNonStriker, newStriker];
       }
-    }
 
-    // After wicket, new batsman comes to striker end (simplified)
-    if (wicket) {
-      // Find next available batsman who is not out
-      const outIds = []; // you'd track fallen players in real app
-      const nextBatsman = battingTeam.players.find(
-        p => !outIds.includes(p.id) && p.id !== currentBatsmen.striker && p.id !== currentBatsmen.nonStriker
-      );
-      if (nextBatsman) {
-        newStriker = nextBatsman.id;
+      // After wicket → new batsman to striker's end
+      if (wicket) {
+        const outPlayers = prev.fallOfWickets.map((w) => w.batsmanId);
+        const nextBatsman = prev.players.find(
+          (p) =>
+            !outPlayers.includes(p.id) &&
+            p.id !== currentBatsmen.striker &&
+            p.id !== currentBatsmen.nonStriker
+        );
+
+        if (nextBatsman) {
+          newStriker = nextBatsman.id;
+          // non-striker stays (unless run out, but we simplify)
+        }
       }
-    }
 
-    setBattingTeam(prev => ({
-      ...prev,
-      runs: newRuns,
-      wickets: newWickets,
-      extras: newExtras,
-      overs: newOvers,
-      balls: newBalls,
-    }));
+      // Record fall of wicket
+      let newFallOfWickets = [...prev.fallOfWickets];
+      if (wicket) {
+        newFallOfWickets.push({
+          wicket: newWickets,
+          score: newRuns,
+          over: `${newOvers}.${newBalls}`,
+          batsmanId: outBatsmanId,
+          type: wicketType,
+        });
+      }
 
-    setCurrentBatsmen({ striker: newStriker, nonStriker: newNonStriker });
+      return {
+        ...prev,
+        players: updatedPlayers,
+        runs: newRuns,
+        wickets: newWickets,
+        extras: newExtras,
+        overs: newOvers,
+        balls: newBalls,
+        fallOfWickets: newFallOfWickets,
+      };
+    });
 
-    // Rotate bowler every over (simplified)
-    if (newBalls === 0 && newOvers > battingTeam.overs) {
-      const bowlers = bowlingTeam.players.filter(p => p.role.includes('Bowler') || p.role.includes('All-rounder'));
-      const currentIdx = bowlers.findIndex(b => b.id === currentBowler);
-      const nextIdx = (currentIdx + 1) % bowlers.length;
-      setCurrentBowler(bowlers[nextIdx]?.id || currentBowler);
+    // Change bowler at end of over
+    if (battingTeam.balls + 1 >= 6 && !isExtra) { // simplified – only on legal delivery
+      setCurrentBatsmen((prevState) => {
+        // Cross batsmen at end of over
+        return {
+          striker: prevState.nonStriker,
+          nonStriker: prevState.striker,
+        };
+      });
+
+      setBowlingTeam((prevTeam) => {
+        const bowlers = prevTeam.players.filter(
+          (p) => p.role.includes('Bowler') || p.role.includes('All-rounder')
+        );
+        const currentIdx = bowlers.findIndex((b) => b.id === currentBowler);
+        const nextIdx = (currentIdx + 1) % bowlers.length;
+        setCurrentBowler(bowlers[nextIdx]?.id || currentBowler);
+        return prevTeam;
+      });
     }
   };
 

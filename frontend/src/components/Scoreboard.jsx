@@ -1,3 +1,5 @@
+import BallUpdate from './BallUpdate'; // ← Make sure this import is correct
+
 export default function Scoreboard({
   battingTeam,
   bowlingTeam,
@@ -18,51 +20,56 @@ export default function Scoreboard({
     <div className="scoreboard">
       <h2>{battingTeam.name} Innings</h2>
 
+      {/* Main Score Display */}
       <div className="main-score">
         <div className="score-big">{scoreText}</div>
         <div className="overs">{overText}</div>
-        <div className="extras">Extras: {extrasTotal} (w{battingTeam.extras.wide} nb{battingTeam.extras.noball} b{battingTeam.extras.bye} lb{battingTeam.extras.legbye})</div>
+        <div className="extras">
+          Extras: {extrasTotal} 
+          (w{battingTeam.extras.wide} nb{battingTeam.extras.noball} 
+          b{battingTeam.extras.bye} lb{battingTeam.extras.legbye})
+        </div>
       </div>
 
-      <div className="current">
-        <div>
-          <strong>Striker:</strong> {striker?.name || '—'} 
-          {/* You can add runs/balls faced later */}
+      {/* Current Players */}
+      <div className="current-players">
+        <div className="batsman-info">
+          <strong>Striker:</strong> {striker?.name || '—'}
+          {striker && (
+            <span className="stats">
+              {' '}({striker.runs || 0} runs, {striker.balls || 0} balls)
+            </span>
+          )}
         </div>
-        <div>
+        <div className="batsman-info">
           <strong>Non-striker:</strong> {nonStriker?.name || '—'}
+          {nonStriker && (
+            <span className="stats">
+              {' '}({nonStriker.runs || 0} runs, {nonStriker.balls || 0} balls)
+            </span>
+          )}
         </div>
-        <div>
+        <div className="bowler-info">
           <strong>Bowler:</strong> {bowler?.name || '—'}
+          {bowler && (
+            <span className="stats">
+              {' '}(O: {bowler.overs || 0}, R: {bowler.runsConceded || 0}, W: {bowler.wickets || 0})
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="controls">
-        <h3>Update Ball</h3>
-
-        <div className="run-buttons">
-          {[0,1,2,3,4,6].map(r => (
-            <button key={r} onClick={() => addRun(r)}>{r}</button>
-          ))}
-        </div>
-
-        <div className="extras-buttons">
-          <button onClick={() => addRun(1, true, 'wide')}>Wide (+1)</button>
-          <button onClick={() => addRun(1, true, 'noball')}>No-ball (+1)</button>
-          <button onClick={() => addRun(0, true, 'bye')}>Bye (run separately)</button>
-          <button onClick={() => addRun(0, true, 'legbye')}>Leg-bye</button>
-        </div>
-
-        <div className="wicket-buttons">
-          <button className="danger" onClick={() => addRun(0, false, null, true, 'Bowled')}>Bowled</button>
-          <button className="danger" onClick={() => addRun(0, false, null, true, 'Caught')}>Caught</button>
-          <button className="danger" onClick={() => addRun(0, false, null, true, 'LBW')}>LBW</button>
-          <button className="danger" onClick={() => addRun(0, false, null, true, 'Run out')}>Run out</button>
-          <button className="danger" onClick={() => addRun(0, false, null, true, 'Stumped')}>Stumped</button>
-        </div>
+      {/* Ball Update Controls */}
+      <div className="controls-section">
+        <BallUpdate addRun={addRun} />
       </div>
 
-      {/* You can add batting order / fall of wickets / bowler figures tables later */}
+      {/* Future sections - you can expand these later */}
+      {/* 
+      <div className="fall-of-wickets">...</div>
+      <div className="batting-order">...</div>
+      <div className="bowling-figures">...</div>
+      */}
     </div>
   );
 }
